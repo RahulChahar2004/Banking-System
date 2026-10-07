@@ -1,21 +1,107 @@
 // use prisma-8
 
-model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  username  String?
-  name      String?
-  posts     Post[]
-  createdAt TimestamptzString @default(now())
-  updatedAt temporal.updatedAtString()
+enum UserRole {
+  CUSTOMER
+  ADMIN
+  TELLER
 }
 
-model Post {
-  id        Int      @id @default(autoincrement())
-  title     String
-  content   String?
-  author    User     @relation(fields: [authorId], references: [id])
-  authorId  Int
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  PENDING
+}
+
+enum AccountType {
+  SAVINGS
+  CHECKING
+  BUSINESS
+  LOAN
+}
+
+enum AccountStatus {
+  ACTIVE
+  FROZEN
+  CLOSED
+}
+
+enum TransactionType {
+  DEPOSIT
+  WITHDRAWAL
+  TRANSFER
+  PAYMENT
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+model User {
+  id            String            @id @default(uuid())
+  email         String            @unique
+  passwordHash  String
+  firstName     String
+  lastName      String
+  phone         String?
+  role          UserRole          @default(CUSTOMER)
+  status        UserStatus        @default(ACTIVE)
+  accounts      Account[]
+  beneficiaries Beneficiary[]
+  auditLogs     AuditLog[]
+  createdAt     TimestamptzString @default(now())
+  updatedAt     temporal.updatedAtString()
+}
+
+model Account {
+  id                   String            @id @default(uuid())
+  accountNumber        String            @unique
+  accountType          AccountType       @default(SAVINGS)
+  status               AccountStatus     @default(ACTIVE)
+  currency             String            @default("USD")
+  balance              Float             @default(0.0)
+  userId               String
+  user                 User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sentTransactions     Transaction[]     @relation("SourceAccount")
+  receivedTransactions Transaction[]     @relation("TargetAccount")
+  createdAt            TimestamptzString @default(now())
+  updatedAt            temporal.updatedAtString()
+}
+
+model Transaction {
+  id              String            @id @default(uuid())
+  reference       String            @unique
+  type            TransactionType
+  status          TransactionStatus @default(PENDING)
+  amount          Float
+  currency        String            @default("USD")
+  description     String?
+  sourceAccountId String?
+  sourceAccount   Account?          @relation("SourceAccount", fields: [sourceAccountId], references: [id], onDelete: SetNull)
+  targetAccountId String?
+  targetAccount   Account?          @relation("TargetAccount", fields: [targetAccountId], references: [id], onDelete: SetNull)
+  createdAt       TimestamptzString @default(now())
+  updatedAt       temporal.updatedAtString()
+}
+
+model Beneficiary {
+  id            String            @id @default(uuid())
+  name          String
+  accountNumber String
+  bankName      String?
+  userId        String
+  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt     TimestamptzString @default(now())
+}
+
+model AuditLog {
+  id        String            @id @default(uuid())
+  userId    String?
+  user      User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String
+  ipAddress String?
+  details   String?
   createdAt TimestamptzString @default(now())
-  updatedAt temporal.updatedAtString()
 }
